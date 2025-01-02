@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor de Ações</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        #controls {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .stock-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        .stock-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            background-color: #f9f9f9;
+            height: 220px; /* Altura fixa para formar quadrados */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .stock-header {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+        .stock-price {
+            font-size: 22px;
+            font-weight: bold;
+            color: green;
+            margin: 10px 0;
+        }
+        .stock-open {
+            font-size: 16px;
+            margin: 5px 0;
+            color: #555;
+        }
+        .stock-change {
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .stock-change.positive {
+            color: green;
+        }
+        .stock-change.negative {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 style="text-align: center;">Monitor de Ações</h1>
+        <div id="controls">
+            <input type="text" id="symbol" placeholder="Digite o símbolo da ação (ex: AAPL)">
+            <button onclick="addStock()">Adicionar Ação</button>
+        </div>
+        <div class="stock-grid" id="stocks"></div>
+    </div>
+
+    <script>
+        const apiUrl = 'http://localhost:3000/quote'; // Substitua pelo URL do seu backend
+        const stocks = {};
+        const defaultStocks = ['PETR4.SA', 'PETR3.SA', 'JBSS3.SA', 'BBSE3.SA',  'RECV3.SA'];
+
+        // Adicionar nova ação
+        async function addStock(symbol) {
+            symbol = symbol.trim().toUpperCase();
+            if (!symbol) {
+                alert('Por favor, insira um símbolo válido!');
+                return;
+            }
+            if (stocks[symbol]) {
+                alert('Esta ação já está sendo monitorada!');
+                return;
+            }
+
+            // Criar card da ação e iniciar monitoramento
+            createStockCard(symbol);
+        }
+
+        // Criar um cartão para a ação
+        function createStockCard(symbol) {
+            const stockCard = document.createElement('div');
+            stockCard.className = 'stock-card';
+            stockCard.id = `stock-${symbol}`;
+            stockCard.innerHTML = `
+                <div class="stock-header">${symbol}</div>
+                <div class="stock-price" id="price-${symbol}">Carregando...</div>
+                <div class="stock-open" id="open-${symbol}">Carregando...</div>
+                <div class="stock-change" id="change-${symbol}">Carregando...</div>
+            `;
+            document.getElementById('stocks').appendChild(stockCard);
+
+            // Salvar no objeto de monitoramento e iniciar atualizações
+            stocks[symbol] = setInterval(() => updateStockData(symbol), 60000);
+            updateStockData(symbol); // Atualiza imediatamente
+        }
+
+        // Buscar dados da API e atualizar a interface
+        async function updateStockData(symbol) {
+            try {
+                const response = await fetch(`${apiUrl}/${symbol}`);
+                if (!response.ok) throw new Error('Erro ao obter dados da ação');
+                const data = await response.json();
+
+                // Atualizar preço, abertura e variação
+                document.getElementById(`price-${symbol}`).textContent = `Preço Atual: $${data.price.toFixed(2)}`;
+                document.getElementById(`open-${symbol}`).textContent = `Abertura: $${data.open.toFixed(2)}`;
+                const changeElement = document.getElementById(`change-${symbol}`);
+                changeElement.textContent = `Variação: ${data.change.toFixed(2)} (${data.changePercent.toFixed(2)}%)`;
+                changeElement.className = `stock-change ${data.change >= 0 ? 'positive' : 'negative'}`;
+            } catch (error) {
+                console.error(`Erro ao buscar dados para ${symbol}:`, error);
+            }
+        }
+
+        // Carregar ações padrão ao iniciar
+        window.onload = () => {
+            defaultStocks.forEach(symbol => addStock(symbol));
+        };
+    </script>
+</body>
+</html>
+
